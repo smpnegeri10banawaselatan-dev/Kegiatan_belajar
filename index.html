@@ -42,6 +42,13 @@
       Upload
     </button>
 
+    <!-- Progress Bar -->
+    <div id="progressContainer" class="hidden mt-4">
+      <div class="w-full bg-gray-200 rounded-full h-4">
+        <div id="progressBar" class="bg-blue-500 h-4 rounded-full text-xs text-center text-white leading-4" style="width: 0%">0%</div>
+      </div>
+    </div>
+
     <!-- Notifikasi -->
     <div id="notif" class="mt-4 text-center font-semibold hidden"></div>
   </div>
@@ -51,6 +58,8 @@
 const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxkU6383uuQQESW9u4p0wjDI4-zS6nuWRzj6bwV-vgRbV1Gl2QvOR_q1j_PHeeJpAxYCg/exec"; 
 const notifEl = document.getElementById("notif");
 const uploadBtn = document.getElementById("uploadBtn");
+const progressContainer = document.getElementById("progressContainer");
+const progressBar = document.getElementById("progressBar");
 
 // Ambil daftar guru
 fetch(SCRIPT_URL)
@@ -76,9 +85,11 @@ function uploadFile() {
     return;
   }
 
-  // Disable tombol saat proses upload
   uploadBtn.disabled = true;
   uploadBtn.textContent = "Mengirim...";
+  progressContainer.classList.remove("hidden");
+  progressBar.style.width = "0%";
+  progressBar.textContent = "0%";
 
   const reader = new FileReader();
   reader.onload = function(e) {
@@ -89,28 +100,58 @@ function uploadFile() {
     formData.append("fileType", file.type);
     formData.append("guru", guru);
 
-    fetch(SCRIPT_URL, { method: "POST", body: formData })
-    .then(res => res.json())
-    .then(resp => {
-      if (resp.status === "success") {
-        notifEl.textContent = "✅ File berhasil dikirim!";
-        notifEl.className = "mt-4 text-green-600 font-semibold text-center";
-      } else {
-        notifEl.textContent = "❌ Gagal: " + resp.message;
-        notifEl.className = "mt-4 text-red-600 font-semibold text-center";
+    // Gunakan XMLHttpRequest agar bisa tracking progress
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", SCRIPT_URL, true);
+
+    xhr.upload.onprogress = function(event) {
+      if (event.lengthComputable) {
+        const percent = Math.round((event.loaded / event.total) * 100);
+        progressBar.style.width = percent + "%";
+        progressBar.textContent = percent + "%";
       }
-      notifEl.classList.remove("hidden");
+    };
+
+    xhr.onload = function() {
       uploadBtn.disabled = false;
       uploadBtn.textContent = "Upload";
+
+      if (xhr.status === 200) {
+        try {
+          const resp = JSON.parse(xhr.responseText);
+          if (resp.status === "success") {
+            notifEl.textContent = "✅ File berhasil dikirim!";
+            notifEl.className = "mt-4 text-green-600 font-semibold text-center";
+          } else {
+            notifEl.textContent = "❌ Gagal: " + resp.message;
+            notifEl.className = "mt-4 text-red-600 font-semibold text-center";
+          }
+        } catch (e) {
+          notifEl.textContent = "⚠️ Response tidak valid dari server.";
+          notifEl.className = "mt-4 text-red-600 font-semibold text-center";
+        }
+      } else {
+        notifEl.textContent = "⚠️ Error jaringan (" + xhr.status + ")";
+        notifEl.className = "mt-4 text-red-600 font-semibold text-center";
+      }
+
+      notifEl.classList.remove("hidden");
       fileInput.value = "";
-    })
-    .catch(err => {
-      notifEl.textContent = "⚠️ Error: " + err.message;
+      setTimeout(() => {
+        progressContainer.classList.add("hidden");
+      }, 1500);
+    };
+
+    xhr.onerror = function() {
+      notifEl.textContent = "⚠️ Upload gagal. Coba lagi.";
       notifEl.className = "mt-4 text-red-600 font-semibold text-center";
       notifEl.classList.remove("hidden");
       uploadBtn.disabled = false;
       uploadBtn.textContent = "Upload";
-    });
+      progressContainer.classList.add("hidden");
+    };
+
+    xhr.send(formData);
   };
   reader.readAsDataURL(file);
 }
