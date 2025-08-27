@@ -55,13 +55,13 @@
 </main>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxkU6383uuQQESW9u4p0wjDI4-zS6nuWRzj6bwV-vgRbV1Gl2QvOR_q1j_PHeeJpAxYCg/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6fAErXwSoc1vXq-cm8lsUq9eeLp3OQDhRdzBUE_VRickeWRKV7CYlHFEALFVNPk847A/exec"; 
 const notifEl = document.getElementById("notif");
 const uploadBtn = document.getElementById("uploadBtn");
 const progressContainer = document.getElementById("progressContainer");
 const progressBar = document.getElementById("progressBar");
 
-// Ambil daftar guru
+// Ambil daftar guru dari Apps Script
 fetch(SCRIPT_URL)
 .then(res => res.json())
 .then(data => {
@@ -94,64 +94,58 @@ function uploadFile() {
   const reader = new FileReader();
   reader.onload = function(e) {
     const base64Data = e.target.result.split(",")[1];
-    const formData = new FormData();
-    formData.append("fileBlob", base64Data);
-    formData.append("fileName", file.name);
-    formData.append("fileType", file.type);
-    formData.append("guru", guru);
 
-    // Gunakan XMLHttpRequest agar bisa tracking progress
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", SCRIPT_URL, true);
-
-    xhr.upload.onprogress = function(event) {
-      if (event.lengthComputable) {
-        const percent = Math.round((event.loaded / event.total) * 100);
-        progressBar.style.width = percent + "%";
-        progressBar.textContent = percent + "%";
-      }
-    };
-
-    xhr.onload = function() {
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = "Upload";
-
-      if (xhr.status === 200) {
-        try {
-          const resp = JSON.parse(xhr.responseText);
-          if (resp.status === "success") {
-            notifEl.textContent = "✅ File berhasil dikirim!";
-            notifEl.className = "mt-4 text-green-600 font-semibold text-center";
-          } else {
-            notifEl.textContent = "❌ Gagal: " + resp.message;
-            notifEl.className = "mt-4 text-red-600 font-semibold text-center";
-          }
-        } catch (e) {
-          notifEl.textContent = "⚠️ Response tidak valid dari server.";
-          notifEl.className = "mt-4 text-red-600 font-semibold text-center";
-        }
+    // Simulasi progress bar
+    let fakeProgress = 0;
+    const interval = setInterval(() => {
+      if (fakeProgress < 90) {
+        fakeProgress += 10;
+        progressBar.style.width = fakeProgress + "%";
+        progressBar.textContent = fakeProgress + "%";
       } else {
-        notifEl.textContent = "⚠️ Error jaringan (" + xhr.status + ")";
+        clearInterval(interval);
+      }
+    }, 200);
+
+    fetch(SCRIPT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        guru: guru,
+        fileName: file.name,
+        fileType: file.type,
+        fileData: base64Data
+      })
+    })
+    .then(res => res.json())
+    .then(resp => {
+      clearInterval(interval);
+      progressBar.style.width = "100%";
+      progressBar.textContent = "100%";
+
+      if (resp.status === "success") {
+        notifEl.textContent = "✅ File berhasil dikirim!";
+        notifEl.className = "mt-4 text-green-600 font-semibold text-center";
+      } else {
+        notifEl.textContent = "❌ Gagal: " + resp.message;
         notifEl.className = "mt-4 text-red-600 font-semibold text-center";
       }
 
       notifEl.classList.remove("hidden");
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = "Upload";
       fileInput.value = "";
-      setTimeout(() => {
-        progressContainer.classList.add("hidden");
-      }, 1500);
-    };
-
-    xhr.onerror = function() {
-      notifEl.textContent = "⚠️ Upload gagal. Coba lagi.";
+      setTimeout(() => progressContainer.classList.add("hidden"), 1500);
+    })
+    .catch(err => {
+      clearInterval(interval);
+      notifEl.textContent = "⚠️ Error: " + err.message;
       notifEl.className = "mt-4 text-red-600 font-semibold text-center";
       notifEl.classList.remove("hidden");
       uploadBtn.disabled = false;
       uploadBtn.textContent = "Upload";
       progressContainer.classList.add("hidden");
-    };
-
-    xhr.send(formData);
+    });
   };
   reader.readAsDataURL(file);
 }
