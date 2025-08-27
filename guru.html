@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -7,13 +6,13 @@
 <title>Daftar Guru</title>
 <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-100 min-h-screen flex flex-col">
 
 <!-- Navbar -->
 <nav class="bg-blue-600 text-white p-4 shadow">
   <div class="container mx-auto flex justify-between items-center">
     <h1 class="text-lg font-bold">Kegiatan Harian Sekolah</h1>
-    <ul class="flex space-x-6">
+    <ul class="flex space-x-4 text-sm sm:text-base">
       <li><a href="index.html" class="hover:underline">Kirim Data</a></li>
       <li><a href="guru.html" class="hover:underline">Daftar Guru</a></li>
     </ul>
@@ -21,31 +20,51 @@
 </nav>
 
 <!-- Konten -->
-<div class="p-6">
-  <h2 class="text-2xl font-bold mb-4">Daftar Guru</h2>
+<div class="container mx-auto p-4 flex-1 w-full">
+  <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4">
+    <h2 class="text-xl sm:text-2xl font-bold mb-2 sm:mb-0">Daftar Guru</h2>
+
+    <!-- Tombol toggle -->
+    <div class="space-x-2">
+      <button onclick="setView('table')" 
+              class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">Tabel</button>
+      <button onclick="setView('card')" 
+              class="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700 text-sm">Kartu</button>
+    </div>
+  </div>
 
   <!-- Input Pencarian -->
   <input type="text" id="searchInput" placeholder="Cari nama atau NIP..." 
-         class="border p-2 w-full mb-4 rounded" onkeyup="filterTable()">
+         class="border p-2 w-full mb-4 rounded focus:outline-none focus:ring focus:ring-blue-300 text-sm sm:text-base"
+         onkeyup="filterTable()">
 
-  <table class="table-auto border-collapse border border-gray-400 w-full" id="guruTable">
-    <thead>
-      <tr class="bg-gray-200">
-        <th class="border px-2 py-1">Nama Guru</th>
-        <th class="border px-2 py-1">NIP</th>
-        <th class="border px-2 py-1">Media</th>
-      </tr>
-    </thead>
-    <tbody id="guruBody">
-      <!-- Data otomatis dimuat dari spreadsheet -->
-    </tbody>
-  </table>
+  <!-- Tampilan Tabel -->
+  <div id="tableView" class="overflow-x-auto bg-white rounded shadow hidden">
+    <table class="min-w-full border-collapse border border-gray-300 text-sm sm:text-base" id="guruTable">
+      <thead>
+        <tr class="bg-gray-200">
+          <th class="border px-2 py-2 text-left">Nama Guru</th>
+          <th class="border px-2 py-2 text-left">NIP</th>
+          <th class="border px-2 py-2 text-left">Media</th>
+        </tr>
+      </thead>
+      <tbody id="guruBody">
+        <!-- Data otomatis dimuat dari spreadsheet -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Tampilan Card -->
+  <div id="cardView" class="space-y-3 hidden">
+    <!-- Data otomatis dimuat dari spreadsheet -->
+  </div>
 </div>
 
 <script>
 const SHEET_ID = "1SVtLNZouu5qEQ4g8VXmgsDZL1uZqxgXRjQYLYznkaGY";
 const SHEET_NAME = "data_upload";
 let allData = []; // simpan data global
+let currentView = "table"; // default
 
 function loadGuruData() {
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${SHEET_NAME}`;
@@ -53,20 +72,19 @@ function loadGuruData() {
     .then(res => res.text())
     .then(rep => {
       const data = JSON.parse(rep.substr(47).slice(0, -2));
-      const tbody = document.getElementById("guruBody");
-      tbody.innerHTML = "";
       allData = []; // reset data
 
-      // mulai dari baris ke-2 (skip baris pertama/header)
+      // mulai dari baris ke-2 (skip header)
       data.table.rows.slice(1).forEach(r => {
         const nama = r.c[0] ? r.c[0].v : "";
         const nip = r.c[1] ? r.c[1].v : "";
         const media = r.c[2] ? r.c[2].v : "";
-
         allData.push({nama, nip, media});
       });
 
       renderTable(allData);
+      renderCards(allData);
+      autoSetView(); // tentukan tampilan default sesuai ukuran layar
     });
 }
 
@@ -79,12 +97,32 @@ function renderTable(data) {
       mediaHtml = `<a href="${item.media}" target="_blank" class="text-blue-600 underline">Lihat Data</a>`;
     }
     const tr = document.createElement("tr");
+    tr.className = "hover:bg-gray-50";
     tr.innerHTML = `
-      <td class="border px-2 py-1">${item.nama}</td>
-      <td class="border px-2 py-1">${item.nip}</td>
-      <td class="border px-2 py-1">${mediaHtml}</td>
+      <td class="border px-2 py-2">${item.nama}</td>
+      <td class="border px-2 py-2">${item.nip}</td>
+      <td class="border px-2 py-2">${mediaHtml || "-"}</td>
     `;
     tbody.appendChild(tr);
+  });
+}
+
+function renderCards(data) {
+  const container = document.getElementById("cardView");
+  container.innerHTML = "";
+  data.forEach(item => {
+    let mediaHtml = item.media;
+    if (item.media && item.media.startsWith("http")) {
+      mediaHtml = `<a href="${item.media}" target="_blank" class="text-blue-600 underline">Lihat Data</a>`;
+    }
+    const card = document.createElement("div");
+    card.className = "bg-white p-3 rounded shadow border";
+    card.innerHTML = `
+      <p class="font-bold">${item.nama}</p>
+      <p class="text-sm text-gray-600">NIP: ${item.nip}</p>
+      <p>${mediaHtml || "-"}</p>
+    `;
+    container.appendChild(card);
   });
 }
 
@@ -97,6 +135,29 @@ function filterTable() {
     (item.media && item.media.toLowerCase().includes(query))
   );
   renderTable(filtered);
+  renderCards(filtered);
+}
+
+// Set tampilan otomatis saat pertama kali buka
+function autoSetView() {
+  if (window.innerWidth < 640) {
+    setView("card");
+  } else {
+    setView("table");
+  }
+}
+
+// Fungsi toggle manual
+function setView(view) {
+  currentView = view;
+  document.getElementById("tableView").classList.add("hidden");
+  document.getElementById("cardView").classList.add("hidden");
+
+  if (view === "table") {
+    document.getElementById("tableView").classList.remove("hidden");
+  } else {
+    document.getElementById("cardView").classList.remove("hidden");
+  }
 }
 
 // Panggil saat halaman dibuka
