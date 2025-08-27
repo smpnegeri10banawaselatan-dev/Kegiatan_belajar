@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kegiatan Harian Sekolah</title>
-  <script src="https://cdn.tailwindcss.com"></script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kegiatan Harian Sekolah</title>
+<script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
@@ -19,25 +19,21 @@
   </div>
 </nav>
 
-<!-- Konten -->
 <main class="flex-grow container mx-auto p-4 md:p-8">
   <div class="bg-white rounded-xl shadow-lg p-6 md:p-8 max-w-xl mx-auto">
     <h2 class="text-xl md:text-2xl font-bold mb-6 text-gray-700">Upload Kegiatan</h2>
 
-    <!-- Pilih guru -->
     <div class="mb-4">
       <label class="block mb-2 font-semibold text-gray-600">Pilih Guru:</label>
       <select id="guruSelect" class="border rounded-lg p-2 w-full focus:ring-2 focus:ring-blue-400"></select>
     </div>
 
-    <!-- Pilih file -->
     <div class="mb-6">
       <label class="block mb-2 font-semibold text-gray-600">Pilih File:</label>
       <input type="file" id="fileInput" class="border rounded-lg p-2 w-full focus:ring-2 focus:ring-blue-400" />
     </div>
 
-    <!-- Tombol Upload -->
-    <button id="uploadBtn" onclick="uploadFile()" 
+    <button id="uploadBtn" onclick="uploadFile()"
       class="bg-blue-500 hover:bg-blue-600 text-white px-5 py-2 rounded-lg w-full font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed">
       Upload
     </button>
@@ -55,13 +51,13 @@
 </main>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbw6fAErXwSoc1vXq-cm8lsUq9eeLp3OQDhRdzBUE_VRickeWRKV7CYlHFEALFVNPk847A/exec"; 
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxaOG0uiXqRUw6KFcDfKSY25o8IWjW_1JcVZL1qLjSSDQ42N7BOX-cz-k_ztj_lYXYLaQ/exec"; // URL hasil deploy Web App
 const notifEl = document.getElementById("notif");
 const uploadBtn = document.getElementById("uploadBtn");
 const progressContainer = document.getElementById("progressContainer");
 const progressBar = document.getElementById("progressBar");
 
-// Ambil daftar guru dari Apps Script
+// Ambil daftar guru
 fetch(SCRIPT_URL)
 .then(res => res.json())
 .then(data => {
@@ -72,7 +68,8 @@ fetch(SCRIPT_URL)
     option.textContent = guru.nama;
     select.appendChild(option);
   });
-});
+})
+.catch(err => alert("Gagal ambil daftar guru: " + err));
 
 // Upload file
 function uploadFile() {
@@ -95,7 +92,7 @@ function uploadFile() {
   reader.onload = function(e) {
     const base64Data = e.target.result.split(",")[1];
 
-    // Simulasi progress bar
+    // Simulasi progress
     let fakeProgress = 0;
     const interval = setInterval(() => {
       if (fakeProgress < 90) {
