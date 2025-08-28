@@ -8,13 +8,12 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
-<!-- Navbar -->
 <nav class="bg-blue-600 text-white p-4 shadow-md">
   <div class="container mx-auto flex justify-between items-center">
     <h1 class="text-lg md:text-xl font-bold">Kegiatan Harian Sekolah</h1>
     <ul class="flex space-x-4 text-sm md:text-base">
-      <li><a href="index.html" class="hover:underline">Kirim Data</a></li>
-      <li><a href="guru.html" class="hover:underline">Daftar Guru</a></li>
+      <li><a href="#" class="hover:underline">Kirim Data</a></li>
+      <li><a href="#" class="hover:underline">Daftar Guru</a></li>
     </ul>
   </div>
 </nav>
@@ -38,26 +37,24 @@
       Upload
     </button>
 
-    <!-- Progress Bar -->
     <div id="progressContainer" class="hidden mt-4">
       <div class="w-full bg-gray-200 rounded-full h-4">
         <div id="progressBar" class="bg-blue-500 h-4 rounded-full text-xs text-center text-white leading-4" style="width: 0%">0%</div>
       </div>
     </div>
 
-    <!-- Notifikasi -->
     <div id="notif" class="mt-4 text-center font-semibold hidden"></div>
   </div>
 </main>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwbMqdngiJuHwI0KRykwigtgFDY-W9Tk0L0m2zDupkMX_nDqQJ2PKaHiJWhsUeyEzh1cQ/exec"; // Ganti dengan URL Web App hasil deploy
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwG2Sx-u5B4x1F-45U5k670EA5QShuY2BmBD_76x9yrP4mnxVhoPrrVFc6fQzToAvN0iQ/exec"; // Ganti dengan URL Web App hasil deploy
 const notifEl = document.getElementById("notif");
 const uploadBtn = document.getElementById("uploadBtn");
 const progressContainer = document.getElementById("progressContainer");
 const progressBar = document.getElementById("progressBar");
 
-// Ambil daftar guru
+// Ambil daftar guru (dummy atau bisa dari sheet)
 fetch(SCRIPT_URL)
 .then(res => res.json())
 .then(data => {
@@ -71,7 +68,7 @@ fetch(SCRIPT_URL)
 })
 .catch(err => alert("Gagal ambil daftar guru: " + err));
 
-// Upload file
+// Upload file dengan chunk
 function uploadFile() {
   const guru = document.getElementById("guruSelect").value;
   const fileInput = document.getElementById("fileInput");
@@ -82,67 +79,62 @@ function uploadFile() {
     return;
   }
 
+  const CHUNK_SIZE = 1024*1024*2; // 2MB per chunk
+  let offset = 0;
+
   uploadBtn.disabled = true;
   uploadBtn.textContent = "Mengirim...";
   progressContainer.classList.remove("hidden");
   progressBar.style.width = "0%";
   progressBar.textContent = "0%";
+  notifEl.classList.add("hidden");
 
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     const base64Data = e.target.result.split(",")[1];
 
-    // Simulasi progress
-    let fakeProgress = 0;
-    const interval = setInterval(() => {
-      if (fakeProgress < 90) {
-        fakeProgress += 10;
-        progressBar.style.width = fakeProgress + "%";
-        progressBar.textContent = fakeProgress + "%";
+    async function sendChunk() {
+      if (offset >= base64Data.length) return;
+      let chunk = base64Data.substr(offset, CHUNK_SIZE*1.37);
+      offset += CHUNK_SIZE*1.37;
+      const isLast = offset >= base64Data.length;
+
+      const resp = await fetch(SCRIPT_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          guru: guru,
+          fileName: file.name,
+          fileType: file.type,
+          chunkData: chunk,
+          isLastChunk: isLast
+        })
+      });
+      const result = await resp.json();
+
+      const progress = Math.min(Math.round((offset/base64Data.length)*100), 100);
+      progressBar.style.width = progress + "%";
+      progressBar.textContent = progress + "%";
+
+      if (isLast) {
+        if (result.status === "success") {
+          notifEl.textContent = "✅ File berhasil dikirim!";
+          notifEl.className = "mt-4 text-green-600 font-semibold text-center";
+        } else {
+          notifEl.textContent = "❌ Gagal: " + result.message;
+          notifEl.className = "mt-4 text-red-600 font-semibold text-center";
+        }
+        notifEl.classList.remove("hidden");
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = "Upload";
+        fileInput.value = "";
+        setTimeout(() => progressContainer.classList.add("hidden"), 1500);
       } else {
-        clearInterval(interval);
+        await sendChunk();
       }
-    }, 200);
+    }
 
-    fetch(SCRIPT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        guru: guru,
-        fileName: file.name,
-        fileType: file.type,
-        fileData: base64Data
-      })
-    })
-    .then(res => res.json())
-    .then(resp => {
-      clearInterval(interval);
-      progressBar.style.width = "100%";
-      progressBar.textContent = "100%";
-
-      if (resp.status === "success") {
-        notifEl.textContent = "✅ File berhasil dikirim!";
-        notifEl.className = "mt-4 text-green-600 font-semibold text-center";
-      } else {
-        notifEl.textContent = "❌ Gagal: " + resp.message;
-        notifEl.className = "mt-4 text-red-600 font-semibold text-center";
-      }
-
-      notifEl.classList.remove("hidden");
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = "Upload";
-      fileInput.value = "";
-      setTimeout(() => progressContainer.classList.add("hidden"), 1500);
-    })
-    .catch(err => {
-      clearInterval(interval);
-      notifEl.textContent = "⚠️ Error: " + err.message;
-      notifEl.className = "mt-4 text-red-600 font-semibold text-center";
-      notifEl.classList.remove("hidden");
-      uploadBtn.disabled = false;
-      uploadBtn.textContent = "Upload";
-      progressContainer.classList.add("hidden");
-    });
+    sendChunk();
   };
   reader.readAsDataURL(file);
 }
