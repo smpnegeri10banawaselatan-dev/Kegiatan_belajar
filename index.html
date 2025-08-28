@@ -8,6 +8,7 @@
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col">
 
+<!-- Navbar -->
 <nav class="bg-blue-600 text-white p-4 shadow-md">
   <div class="container mx-auto flex justify-between items-center">
     <h1 class="text-lg md:text-xl font-bold">Kegiatan Harian Sekolah</h1>
@@ -37,24 +38,26 @@
       Upload
     </button>
 
+    <!-- Progress Bar -->
     <div id="progressContainer" class="hidden mt-4">
       <div class="w-full bg-gray-200 rounded-full h-4">
         <div id="progressBar" class="bg-blue-500 h-4 rounded-full text-xs text-center text-white leading-4" style="width: 0%">0%</div>
       </div>
     </div>
 
+    <!-- Notifikasi -->
     <div id="notif" class="mt-4 text-center font-semibold hidden"></div>
   </div>
 </main>
 
 <script>
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwG2Sx-u5B4x1F-45U5k670EA5QShuY2BmBD_76x9yrP4mnxVhoPrrVFc6fQzToAvN0iQ/exec"; // Ganti dengan URL Web App hasil deploy
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyv5uqKL_hjQzP7PK2Moj6KoDPqbpJrbKopfqjH_QR0vdog7IuxQlf3zlWXWCrZYB09xw/exec"; // Ganti dengan URL Web App hasil deploy
 const notifEl = document.getElementById("notif");
 const uploadBtn = document.getElementById("uploadBtn");
 const progressContainer = document.getElementById("progressContainer");
 const progressBar = document.getElementById("progressBar");
 
-// Ambil daftar guru (dummy atau bisa dari sheet)
+// Ambil daftar guru dari sheet
 fetch(SCRIPT_URL)
 .then(res => res.json())
 .then(data => {
@@ -95,6 +98,7 @@ function uploadFile() {
 
     async function sendChunk() {
       if (offset >= base64Data.length) return;
+
       let chunk = base64Data.substr(offset, CHUNK_SIZE*1.37);
       offset += CHUNK_SIZE*1.37;
       const isLast = offset >= base64Data.length;
@@ -110,8 +114,10 @@ function uploadFile() {
           isLastChunk: isLast
         })
       });
+
       const result = await resp.json();
 
+      // Update progress
       const progress = Math.min(Math.round((offset/base64Data.length)*100), 100);
       progressBar.style.width = progress + "%";
       progressBar.textContent = progress + "%";
